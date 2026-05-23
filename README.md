@@ -1,0 +1,1 @@
+# HonkaiStarrail-polaroid-card-tool
