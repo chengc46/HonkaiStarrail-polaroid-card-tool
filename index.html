@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>仿拍立得卡片生成工具</title>
+<style>
+:root { --bg:#f4f7fb; --panel:#fff; --ink:#1f2937; --muted:#6b7280; --line:#d9e1ea; }
+*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:var(--bg);color:var(--ink)}
+header{padding:16px 22px;background:#243746;color:#fff} header h1{font-size:20px;margin:0} header p{font-size:13px;margin:6px 0 0;color:#cbd5e1}
+.app{display:grid;grid-template-columns:370px 1fr;gap:18px;padding:18px;align-items:stretch;min-height:calc(100vh - 92px)} aside,main{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:16px;height:calc(100vh - 92px);min-height:980px} aside{overflow:auto} main{display:flex;flex-direction:column;align-items:center;gap:12px;position:relative;justify-content:flex-start}
+.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:14px}.previewTop{width:min(100%,480px);display:flex;align-items:center;gap:8px}.previewTop .tabs{flex:1;margin-bottom:0}.sizeBtn{width:auto;white-space:nowrap}.modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;z-index:20}.modalBox{width:min(92vw,520px);background:#fff;border-radius:16px;padding:18px;box-shadow:0 24px 60px rgba(0,0,0,.25)}.modalBox h2{font-size:18px}.modalBox pre{white-space:pre-wrap;background:#f8fafc;border:1px solid var(--line);border-radius:12px;padding:12px;line-height:1.65;font-size:13px} button{border:0;border-radius:10px;padding:10px 12px;background:#e5edf5;cursor:pointer;font-weight:700} button.primary,button.active{background:#315b70;color:white} button.warn{background:#f59e0b;color:white} button.small{padding:7px 9px;font-size:12px}
+section{border-top:1px solid var(--line);padding-top:14px;margin-top:14px} section:first-of-type{border-top:0;padding-top:0;margin-top:0}.sectionHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}.sectionHead h2{margin:0}.collapseBtn{flex:0 0 auto;padding:6px 10px;font-size:12px} h2{font-size:15px;margin:0 0 10px} label{display:block;font-size:13px;color:#374151;margin:10px 0 5px} input[type=text],select{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:9px;background:white} input[type=color]{width:54px;height:34px;padding:2px;border:1px solid var(--line);border-radius:8px} input[type=range]{width:100%}.rangeControl{display:flex;flex-direction:column;gap:4px}.rangeHeader{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:10px 0 5px}.rangeHeader label{margin:0;flex:1}.rangeValueInput{flex:0 0 86px;width:86px;padding:6px 8px;border:1px solid var(--line);border-radius:8px;background:#fff;text-align:center;font-size:12px}.rangeHint{display:none;font-size:12px;color:#9ca3af;min-height:16px}.rangeControl.showHint .rangeHint{display:block}
+.row{display:flex;gap:8px;align-items:center} .row>*{flex:1} .check{display:flex;align-items:center;gap:8px;margin-top:10px;color:#374151;font-size:13px} .check input{width:auto} section label{margin-top:12px} section button.small{margin-top:8px} section input[type=file],section select,section .row,section .rangeControl{margin-bottom:10px} section .check{margin-bottom:8px}.hint{font-size:12px;color:var(--muted);line-height:1.5} canvas{width:min(100%,480px);height:auto;background:#ddd;border-radius:12px;box-shadow:0 12px 30px rgba(15,23,42,.18)} .actions{display:flex;flex-wrap:wrap;gap:8px;justify-content:center} footer{padding:0 18px 18px;text-align:center;color:var(--muted);font-size:13px}@media(max-width:860px){.app{grid-template-columns:1fr} aside,main{height:auto;min-height:0}}
+</style>
+</head>
+<body>
+<header><h1>仿拍立得卡片生成工具</h1><p>上传角色图片、调整模板内容，并导出仿拍立得卡片与烫金层。</p></header>
+<div class="app"><aside>
+<section id="generalSection"><div class="sectionHead"><h2>通用设置</h2><button id="toggleGeneral" class="small collapseBtn" type="button">收起</button></div><div id="generalContent"><div class="check"><input id="showOutline" type="checkbox" checked><span>显示轮廓线，并包含在导出图中</span></div><div class="check"><input id="syncBg" type="checkbox" checked><span>正面背景和背面背景保持一致</span></div><div class="check"><input id="syncPath" type="checkbox" checked><span>正面命途和背面命途保持一致</span></div><div class="check"><input id="syncIP" type="checkbox" checked><span>正面 IP 名和背面顶部标题保持一致</span></div><label>底部颜色</label><div class="row"><input id="bottomColor" type="color" value="#73a9c7"><input id="bottomHex" type="text" value="#73a9c7"></div><label>烫金颜色（预览用；烫金层导出为纯黑）</label><div class="row"><input id="goldColor" type="color" value="#e7ae13"><input id="goldHex" type="text" value="#e7ae13"></div></div></section>
+<section id="frontPanel"><h2>正面</h2><label>上传角色立绘</label><input id="charUpload" type="file" accept="image/*"><label>角色大小</label><input id="charScale" type="range" min="20" max="240" value="100"><div class="row"><div><label>X 位置</label><input id="charX" type="range" min="-700" max="700" value="0"></div><div><label>Y 位置</label><input id="charY" type="range" min="-700" max="700" value="0"></div></div><button id="centerChar" class="small">角色居中</button><label>正面渐变上方颜色</label><div class="row"><input id="frontTop" type="color" value="#000000"><input id="frontTopHex" type="text" value="#000000"></div><label>正面渐变下方颜色</label><div class="row"><input id="frontBg" type="color" value="#315b70"><input id="frontBgHex" type="text" value="#315b70"></div><button id="swapFrontGradientColors" class="small">交换正面上下颜色</button><div class="row"><div><label>黑色/上方颜色结束位置</label><input id="frontGradStart" type="range" min="0" max="100" value="50"></div><div><label>下方颜色开始位置</label><input id="frontGradEnd" type="range" min="0" max="100" value="82"></div></div><button id="resetFrontGradient" class="small">重置正面渐变范围</button><label>角色名</label><div class="row"><input id="frontName" type="text" value="NAME"><button id="resetName" class="small">重置</button></div><label>IP 名</label><div class="row"><input id="frontIP" type="text" value="HONKAI: STAR RAIL"><button id="resetFrontIP" class="small">重置</button></div><label>正面命途/图标</label><select id="frontPath"></select><label>上传自定义命途图标</label><input id="frontPathUpload" type="file" accept="image/*"><input id="frontIconScale" type="hidden" value="100"><input id="frontIconX" type="hidden" value="0"><input id="frontIconY" type="hidden" value="0"></section>
+<section id="backPanel" style="display:none"><h2>背面</h2><label>背面渐变上方颜色</label><div class="row"><input id="backTop" type="color" value="#000000"><input id="backTopHex" type="text" value="#000000"></div><label>背面渐变下方颜色</label><div class="row"><input id="backBg" type="color" value="#315b70"><input id="backBgHex" type="text" value="#315b70"></div><button id="swapBackGradientColors" class="small">交换背面上下颜色</button><div class="row"><div><label>上方颜色结束位置</label><input id="backGradStart" type="range" min="0" max="100" value="50"></div><div><label>下方颜色开始位置</label><input id="backGradEnd" type="range" min="0" max="100" value="82"></div></div><button id="resetBackGradient" class="small">重置背面渐变范围</button><label>顶部标题</label><div class="row"><input id="backTitle" type="text" value="HONKAI: STAR RAIL"><button id="resetBackTitle" class="small">重置</button></div><label>背面命途/图标</label><select id="backPath"></select><label>上传自定义命途图标</label><input id="backPathUpload" type="file" accept="image/*"><label>背面命途大小</label><input id="backIconScale" type="range" min="30" max="220" value="100"><div class="row"><div><label>命途 X 位置</label><input id="backIconX" type="range" min="-700" max="700" value="0"></div><div><label>命途 Y 位置</label><input id="backIconY" type="range" min="-700" max="700" value="0"></div></div><div class="row"><button id="centerBackIcon" class="small">背面命途居中</button><button id="resetBackIconScale" class="small">重置背面命途大小</button></div></section>
+<section><h2>导出</h2><div class="hint">建议优先使用“另存为图片”。它会调用浏览器保存文件窗口，通常比自动下载更少触发 Windows 的 Internet 安全拦截。<br><br>备注：星穹铁道命途的背面图标的烫金层有特殊设计，为部分烫金。</div></section></aside>
+<main><div class="previewTop"><div class="tabs"><button id="frontTab" class="active">正面编辑</button><button id="backTab">背面编辑</button></div><button id="sizeBtn" class="small sizeBtn">尺寸</button></div><canvas id="canvas" width="1129" height="1665"></canvas><div class="actions"><button id="exportCard" class="primary">导出当前预览</button><button id="exportGold" class="warn">导出当前烫金层</button></div></main></div><div id="sizeModal" class="modal"><div class="modalBox"><h2>尺寸信息</h2><pre id="sizeInfo"></pre><div class="actions"><button id="closeSize" class="primary">关闭</button></div></div></div>
+<script>
+const W=1129,H=1665;
+const ASSETS={
+  "l1": "assets/layers/l1.png",
+  "l2": "assets/layers/l2.png",
+  "l3": "assets/layers/l3.png",
+  "l4": "assets/layers/l4.png",
+  "l5": "assets/layers/l5.png",
+  "l6": "assets/layers/l6.png",
+  "l7": "assets/layers/l7.png",
+  "l8": "assets/layers/l8.png",
+  "l9": "assets/layers/l9.png",
+  "l10": "assets/layers/l10.png",
+  "l11": "assets/layers/l11.png",
+  "l12": "assets/layers/l12.png",
+  "l13": "assets/layers/l13.png",
+  "l14": "assets/layers/l14.png",
+  "l15": "assets/layers/l15.png",
+  "l16": "assets/layers/l16.png",
+  "l17": "assets/layers/l17.png",
+  "l18": "assets/layers/l18.png",
+  "l19": "assets/layers/l19.png",
+  "l20": "assets/layers/l20.png",
+  "l21": "assets/layers/l21.png",
+  "l22": "assets/layers/l22.png",
+  "l23": "assets/layers/l23.png",
+  "l24": "assets/layers/l24.png",
+  "l25": "assets/layers/l25.png",
+  "l26": "assets/layers/l26.png",
+  "l27": "assets/layers/l27.png",
+  "l28": "assets/layers/l28.png",
+  "l29": "assets/layers/l29.png",
+  "l30": "assets/layers/l30.png",
+  "l31": "assets/layers/l31.png",
+  "l32": "assets/layers/l32.png",
+  "l33": "assets/layers/l33.png",
+  "l39": "assets/layers/l39.png",
+  "l40": "assets/layers/l40.png",
+  "l41": "assets/layers/l41.png",
+  "l42": "assets/layers/l42.png",
+  "l43": "assets/layers/l43.png",
+  "l44": "assets/layers/l44.png",
+  "l45": "assets/layers/l45.png",
+  "l46": "assets/layers/l46.png",
+  "l47": "assets/layers/l47.png",
+  "l48": "assets/layers/l48.png",
+  "l49": "assets/layers/l49.png",
+  "l50": "assets/layers/l50.png",
+  "l51": "assets/layers/l51.png",
+  "l52": "assets/layers/l52.png",
+  "l53": "assets/layers/l53.png",
+  "l54": "assets/layers/l54.png",
+  "l58": "assets/layers/l58.png",
+  "l62": "assets/layers/l62.png"
+};
+const PATHS=[{"key": "preservation", "label": "存护", "large": "l4", "gold": "l5", "front": "l40", "largeOffset": [398, 634, 336, 400], "goldOffset": [461, 713, 209, 251], "frontOffset": [876, 1382, 86, 86]}, {"key": "propagation", "label": "繁育", "large": "l6", "gold": "l7", "front": "l41", "largeOffset": [332, 633, 466, 400], "goldOffset": [485, 633, 162, 384], "frontOffset": [877, 1382, 86, 86]}, {"key": "abundance", "label": "丰饶", "large": "l8", "gold": "l9", "front": "l42", "largeOffset": [388, 633, 353, 400], "goldOffset": [388, 633, 353, 400], "frontOffset": [877, 1382, 86, 86]}, {"key": "destruction", "label": "毁灭", "large": "l12", "gold": "l13", "front": "l43", "largeOffset": [375, 633, 380, 400], "goldOffset": [447, 697, 236, 335], "frontOffset": [877, 1382, 86, 86]}, {"key": "remembrance", "label": "记忆", "large": "l14", "gold": "l15", "front": "l44", "largeOffset": [382, 633, 365, 400], "goldOffset": [382, 633, 355, 400], "frontOffset": [877, 1382, 86, 86]}, {"key": "harmony", "label": "同谐", "large": "l24", "gold": "l25", "front": "l45", "largeOffset": [363, 633, 404, 400], "goldOffset": [436, 678, 290, 278], "frontOffset": [876, 1381, 86, 86]}, {"key": "nihility", "label": "虚无", "large": "l26", "gold": "l27", "front": "l46", "largeOffset": [370, 633, 389, 400], "goldOffset": [464, 636, 202, 357], "frontOffset": [876, 1381, 86, 86]}, {"key": "hunt", "label": "巡猎", "large": "l28", "gold": "l29", "front": "l47", "largeOffset": [336, 633, 457, 400], "goldOffset": [336, 633, 457, 387], "frontOffset": [875, 1380, 86, 86]}, {"key": "erudition", "label": "智识", "large": "l2", "gold": "l3", "front": "l48", "largeOffset": [341, 635, 453, 400], "goldOffset": [341, 641, 453, 391], "frontOffset": [875, 1380, 86, 86]}, {"key": "elation", "label": "欢愉", "large": "l10", "gold": "l11", "front": "l49", "largeOffset": [369, 633, 392, 400], "goldOffset": [465, 633, 200, 400], "frontOffset": [875, 1380, 86, 86]}, {"key": "equilibrium", "label": "均衡", "large": "l16", "gold": "l17", "front": "l50", "largeOffset": [365, 633, 400, 400], "goldOffset": [400, 678, 330, 319], "frontOffset": [874, 1379, 86, 86]}, {"key": "enigmata", "label": "神秘", "large": "l20", "gold": "l21", "front": "l51", "largeOffset": [371, 633, 387, 400], "goldOffset": [383, 633, 300, 335], "frontOffset": [874, 1379, 86, 86]}, {"key": "order", "label": "秩序", "large": "l30", "gold": "l31", "front": "l52", "largeOffset": [381, 633, 367, 400], "goldOffset": [382, 716, 365, 214], "frontOffset": [874, 1379, 86, 86]}, {"key": "voracity", "label": "贪饕", "large": "l22", "gold": "l23", "front": "l53", "largeOffset": [364, 633, 402, 400], "goldOffset": [371, 721, 392, 268], "frontOffset": [874, 1379, 86, 86]}];
+const IM={}; let loaded=0; Object.entries(ASSETS).forEach(([k,src])=>{const im=new Image(); im.onload=()=>{loaded++; draw();}; im.src=src; IM[k]=im;});
+const $=id=>document.getElementById(id), canvas=$('canvas'), ctx=canvas.getContext('2d');
+let side='front', charImg=null, frontCustomIcon=null, backCustomIcon=null;
+function rangeUnit(id){return /Scale$/.test(id)||/Grad(Start|End)$/.test(id)?'%':''}
+function rangeText(el){const unit=rangeUnit(el.id); return `${Number(el.value)}${unit}`}
+function rangeHint(el){const unit=rangeUnit(el.id); return `可输入范围：${el.min}${unit} ～ ${el.max}${unit}`}
+function refreshRangeDisplays(){document.querySelectorAll('input[type=range][data-enhanced="1"]').forEach(el=>{const input=$(el.id+'_input'); const hint=$(el.id+'_hint'); if(input && document.activeElement!==input) input.value=rangeText(el); if(hint) hint.textContent=rangeHint(el);});}
+function enhanceRangeInputs(){document.querySelectorAll('input[type=range]').forEach(el=>{if(el.dataset.enhanced==='1') return; el.dataset.enhanced='1'; const prev=el.previousElementSibling; const labelText=(prev&&prev.tagName==='LABEL')?prev.textContent:''; if(prev&&prev.tagName==='LABEL') prev.remove(); const wrap=document.createElement('div'); wrap.className='rangeControl'; const header=document.createElement('div'); header.className='rangeHeader'; const label=document.createElement('label'); label.textContent=labelText; label.htmlFor=el.id; const input=document.createElement('input'); input.type='text'; input.className='rangeValueInput'; input.id=el.id+'_input'; const hint=document.createElement('div'); hint.className='rangeHint'; hint.id=el.id+'_hint'; el.parentNode.insertBefore(wrap,el); wrap.appendChild(header); header.appendChild(label); header.appendChild(input); wrap.appendChild(el); wrap.appendChild(hint); const sync=()=>{if(document.activeElement!==input) input.value=rangeText(el); hint.textContent=rangeHint(el);}; el.addEventListener('input',sync); input.addEventListener('focus',()=>{wrap.classList.add('showHint'); input.select(); sync();}); input.addEventListener('blur',()=>{wrap.classList.remove('showHint'); sync();}); input.addEventListener('keydown',e=>{if(e.key==='Enter') input.blur();}); input.addEventListener('change',()=>{const raw=input.value.replace(/[^0-9.-]/g,''); if(raw===''){sync(); return;} let n=Number(raw); if(Number.isNaN(n)){sync(); return;} n=Math.max(Number(el.min),Math.min(Number(el.max),n)); el.value=String(n); el.dispatchEvent(new Event('input',{bubbles:true})); sync();}); sync();});}
+function val(id){return $(id).value} function hex(id){return /^#[0-9a-fA-F]{6}$/.test(val(id).trim())?val(id).trim():'#000000'}
+function setupColor(a,b){$(a).addEventListener('input',()=>{$(b).value=$(a).value; syncAfter(a); draw();}); $(b).addEventListener('input',()=>{if(/^#[0-9a-fA-F]{6}$/.test($(b).value)) $(a).value=$(b).value; syncAfter(a); draw();})}
+function syncAfter(id){ if(!$('syncBg').checked)return; if(id==='frontBg'||id==='frontBgHex'){$('backBg').value=$('frontBg').value;$('backBgHex').value=$('frontBgHex').value} if(id==='backBg'||id==='backBgHex'){$('frontBg').value=$('backBg').value;$('frontBgHex').value=$('backBgHex').value} if(id==='frontTop'||id==='frontTopHex'){$('backTop').value=$('frontTop').value;$('backTopHex').value=$('frontTopHex').value} if(id==='backTop'||id==='backTopHex'){$('frontTop').value=$('backTop').value;$('frontTopHex').value=$('backTopHex').value} }
+['bottomColor','goldColor','frontTop','frontBg','backTop','backBg'].forEach((id,i)=>setupColor(id,['bottomHex','goldHex','frontTopHex','frontBgHex','backTopHex','backBgHex'][i]));
+PATHS.forEach(p=>{ for (const id of ['frontPath','backPath']) { const o=document.createElement('option'); o.value=p.key; o.textContent=p.label; $(id).appendChild(o); } }); for (const id of ['frontPath','backPath']) { const o=document.createElement('option'); o.value='custom'; o.textContent='自定义上传'; $(id).appendChild(o); } $('frontPath').value=PATHS[0].key; $('backPath').value=PATHS[0].key;
+function bind(ids){ids.forEach(id=>$(id).addEventListener('input',draw))} enhanceRangeInputs(); bind(['showOutline','frontName','frontIP','backTitle','charScale','charX','charY','frontPath','backPath','syncBg','syncPath','syncIP','frontIconScale','frontIconX','frontIconY','backIconScale','backIconX','backIconY','frontGradStart','frontGradEnd','backGradStart','backGradEnd']);
+$('syncBg').onchange=()=>{syncAfter('frontBg');syncAfter('frontTop'); if($('syncBg').checked){$('backGradStart').value=$('frontGradStart').value;$('backGradEnd').value=$('frontGradEnd').value;} draw()}; ['frontGradStart','frontGradEnd'].forEach(id=>$(id).addEventListener('input',()=>{if($('syncBg').checked){$('backGradStart').value=$('frontGradStart').value;$('backGradEnd').value=$('frontGradEnd').value;} draw();})); ['backGradStart','backGradEnd'].forEach(id=>$(id).addEventListener('input',()=>{if($('syncBg').checked){$('frontGradStart').value=$('backGradStart').value;$('frontGradEnd').value=$('backGradEnd').value;} draw();})); $('syncPath').onchange=()=>{if($('syncPath').checked)$('backPath').value=$('frontPath').value;draw()}; $('frontPath').onchange=()=>{if($('syncPath').checked)$('backPath').value=$('frontPath').value;draw()}; $('backPath').onchange=()=>{if($('syncPath').checked)$('frontPath').value=$('backPath').value;draw()};
+$('resetName').onclick=()=>{$('frontName').value='NAME';draw()}; $('resetFrontIP').onclick=()=>{$('frontIP').value='HONKAI: STAR RAIL'; if($('syncIP').checked)$('backTitle').value=$('frontIP').value; draw()}; $('resetBackTitle').onclick=()=>{$('backTitle').value='HONKAI: STAR RAIL'; if($('syncIP').checked)$('frontIP').value=$('backTitle').value; draw()}; $('syncIP').onchange=()=>{if($('syncIP').checked)$('backTitle').value=$('frontIP').value;draw()}; $('frontIP').addEventListener('input',()=>{if($('syncIP').checked)$('backTitle').value=$('frontIP').value;draw()}); $('backTitle').addEventListener('input',()=>{if($('syncIP').checked)$('frontIP').value=$('backTitle').value;draw()}); $('centerChar').onclick=()=>{$('charX').value=0;$('charY').value=0;draw()}; $('centerBackIcon').onclick=()=>{$('backIconX').value=0;$('backIconY').value=0;draw()}; $('resetBackIconScale').onclick=()=>{$('backIconScale').value=100;draw()};
+$('frontTab').onclick=()=>{side='front';$('frontTab').classList.add('active');$('backTab').classList.remove('active');$('frontPanel').style.display='block';$('backPanel').style.display='none';draw()}; $('backTab').onclick=()=>{side='back';$('backTab').classList.add('active');$('frontTab').classList.remove('active');$('frontPanel').style.display='none';$('backPanel').style.display='block';draw()};
+function loadFile(input,cb){const f=input.files[0]; if(!f)return; const r=new FileReader(); r.onload=e=>{const im=new Image(); im.onload=()=>{cb(im);draw()}; im.src=e.target.result}; r.readAsDataURL(f)}
+$('charUpload').onchange=e=>loadFile(e.target,im=>charImg=im); $('frontPathUpload').onchange=e=>loadFile(e.target,im=>{frontCustomIcon=im;$('frontPath').value='custom'; if($('syncPath').checked){backCustomIcon=im;$('backPath').value='custom'} draw();}); $('backPathUpload').onchange=e=>loadFile(e.target,im=>{backCustomIcon=im;$('backPath').value='custom'; if($('syncPath').checked){frontCustomIcon=im;$('frontPath').value='custom'} draw();});
+function drawAsset(c,key,x,y,w,h){const im=IM[key]; if(im&&im.complete)c.drawImage(im,x,y,w||im.width,h||im.height)}
+function tintAsset(c,key,x,y,w,h,color,alpha=1){const im=IM[key]; if(!im||!im.complete)return; const iw=w||im.width, ih=h||im.height; const t=document.createElement('canvas'); t.width=iw; t.height=ih; const tc=t.getContext('2d'); tc.drawImage(im,0,0,iw,ih); tc.globalCompositeOperation='source-in'; tc.fillStyle=color; tc.globalAlpha=alpha; tc.fillRect(0,0,iw,ih); c.drawImage(t,x,y)}
+function drawBackground(c,bg,front=true){const top=hex(front?'frontTopHex':'backTopHex'); let a=Number(val(front?'frontGradStart':'backGradStart'))/100; let b=Number(val(front?'frontGradEnd':'backGradEnd'))/100; if(b<a)b=a; const g=c.createLinearGradient(0,0,0,1510); g.addColorStop(0,top); g.addColorStop(a,top); g.addColorStop(b,bg); g.addColorStop(1,bg); c.fillStyle=g; c.fillRect(0,0,W,1510); if(front) drawAsset(c,'l39',-178,817); else drawAsset(c,'l1',-178,-79); c.fillStyle=hex('bottomHex'); c.fillRect(0,1510,W,155);}
+function fitImage(c,img,x,y,w,h,scalePct,dx,dy){c.save(); c.beginPath(); c.rect(x,y,w,h); c.clip(); if(!img){c.fillStyle='#000'; c.fillRect(x,y,w,h); c.restore(); return} const r=Math.max(w/img.width,h/img.height)*Number(scalePct)/100; const iw=img.width*r, ih=img.height*r; c.drawImage(img,x+(w-iw)/2+Number(dx),y+(h-ih)/2+Number(dy),iw,ih); c.restore()}
+function drawText(c,text,x,y,size,align='left',color=hex('goldHex')){c.fillStyle=color; c.font=`700 ${size}px Georgia, 'Times New Roman', serif`; c.textAlign=align; c.textBaseline='alphabetic'; c.fillText(text,x,y)}
+function getPath(key){return PATHS.find(p=>p.key===key)||PATHS[0]}
+function adjustedRect(off,scalePct,dx,dy){const s=Number(scalePct)/100; const w=off[2]*s, h=off[3]*s; return [off[0]+(off[2]-w)/2+Number(dx), off[1]+(off[3]-h)/2+Number(dy), w, h];}
+function drawCustomIcon(c,img,x,y,w,h,color,scalePct=100,dx=0,dy=0){ if(!img)return; const sw=Math.max(1,Math.round(w*Number(scalePct)/100)); const sh=Math.max(1,Math.round(h*Number(scalePct)/100)); const t=document.createElement('canvas'); t.width=sw; t.height=sh; const tc=t.getContext('2d'); const r=Math.min(sw/img.width,sh/img.height); const iw=img.width*r, ih=img.height*r; tc.drawImage(img,(sw-iw)/2,(sh-ih)/2,iw,ih); tc.globalCompositeOperation='source-in'; tc.fillStyle=color; tc.fillRect(0,0,sw,sh); c.drawImage(t,x+(w-sw)/2+Number(dx),y+(h-sh)/2+Number(dy))}
+function drawFront(c,goldOnly=false){const gold=goldOnly?'#000':hex('goldHex'); if(!goldOnly){drawBackground(c,hex('frontBgHex'),true); fitImage(c,charImg,168,218,795,1065,val('charScale'),val('charX'),val('charY'));} if(!goldOnly && $('showOutline').checked)tintAsset(c,'l62',117,118,897,1433,'#ffffff'); tintAsset(c,'l58',168,149,794,45,gold); drawText(c,val('frontName'),169,1403,70,'left',gold); drawText(c,val('frontIP'),172,1463,39,'left',gold); const p=getPath(val('frontPath')); if(val('frontPath')==='custom' && (frontCustomIcon||backCustomIcon)) drawCustomIcon(c,frontCustomIcon||backCustomIcon,876,1382,86,86,gold,val('frontIconScale'),val('frontIconX'),val('frontIconY')); else if(p.front){ const r=adjustedRect(p.frontOffset,val('frontIconScale'),val('frontIconX'),val('frontIconY')); tintAsset(c,p.front,r[0],r[1],r[2],r[3],gold);} tintAsset(c,'l54',769,1383,84,85,gold);}
+function drawBack(c,goldOnly=false){const gold=goldOnly?'#000':hex('goldHex'); if(!goldOnly)drawBackground(c,hex('backBgHex'),false); if(!goldOnly && $('showOutline').checked)tintAsset(c,'l62',117,118,897,1433,'#ffffff'); drawText(c,val('backTitle'),W/2,180,39,'center',gold); const p=getPath(val('backPath')); if(val('backPath')==='custom' && (backCustomIcon||frontCustomIcon)) drawCustomIcon(c,backCustomIcon||frontCustomIcon,329,583,471,500,gold,val('backIconScale'),val('backIconX'),val('backIconY')); else {const off=goldOnly?p.goldOffset:p.largeOffset; const r=adjustedRect(off,val('backIconScale'),val('backIconX'),val('backIconY')); tintAsset(c,goldOnly?p.gold:p.large,r[0],r[1],r[2],r[3],gold);} }
+function draw(){refreshRangeDisplays(); ctx.clearRect(0,0,W,H); side==='front'?drawFront(ctx,false):drawBack(ctx,false)}
+function canvasToBlob(c){return new Promise(resolve=>c.toBlob(b=>resolve(b),'image/png'))}
+async function saveCanvas(c,name){const blob=await canvasToBlob(c); if(!blob){alert('导出失败，请换用 Chrome/Edge 或刷新页面后重试。');return} if(window.showSaveFilePicker){try{const handle=await showSaveFilePicker({suggestedName:name,types:[{description:'PNG 图片',accept:{'image/png':['.png']}}]}); const w=await handle.createWritable(); await w.write(blob); await w.close(); return;}catch(e){if(e.name==='AbortError')return; console.warn(e)}} downloadBlob(blob,name)}
+function downloadBlob(blob,name){const url=URL.createObjectURL(blob); const a=document.createElement('a'); a.href=url; a.download=name; document.body.appendChild(a); a.click(); a.remove(); setTimeout(()=>URL.revokeObjectURL(url),4000)}
+async function downloadCanvas(c,name){const blob=await canvasToBlob(c); if(!blob){alert('导出失败，请换用 Chrome/Edge 或刷新页面后重试。');return} downloadBlob(blob,name)}
+function makeGoldCanvas(){const out=document.createElement('canvas'); out.width=W; out.height=H; const c=out.getContext('2d'); c.clearRect(0,0,W,H); side==='front'?drawFront(c,true):drawBack(c,true); return out}
+
+function mm(px){return (px/300*25.4).toFixed(2)}
+function selectedIconSize(which){
+  const key=val(which==='front'?'frontPath':'backPath');
+  const scale=Number(val(which==='front'?'frontIconScale':'backIconScale'))/100;
+  if(key==='custom'){
+    const base=which==='front'?[86,86]:[471,500];
+    return [Math.round(base[0]*scale),Math.round(base[1]*scale)];
+  }
+  const p=getPath(key);
+  const off=which==='front'?(p.frontOffset||[874,1379,86,86]):p.largeOffset;
+  return [Math.round(off[2]*scale),Math.round(off[3]*scale)];
+}
+function showSizes(){
+  const f=selectedIconSize('front'), b=selectedIconSize('back');
+  $('sizeInfo').textContent = `轮廓线：897 × 1433 px；约 ${mm(897)} × ${mm(1433)} mm（按 300 DPI 换算）
+正面命途图标：${f[0]} × ${f[1]} px；约 ${mm(f[0])} × ${mm(f[1])} mm
+背面命途图标：${b[0]} × ${b[1]} px；约 ${mm(b[0])} × ${mm(b[1])} mm
+
+注：命途尺寸会随当前缩放滑杆变化。`;
+  $('sizeModal').style.display='flex';
+}
+
+
+function swapGradientColors(which){
+  const top = which==='front' ? ['frontTop','frontTopHex'] : ['backTop','backTopHex'];
+  const bottom = which==='front' ? ['frontBg','frontBgHex'] : ['backBg','backBgHex'];
+  const topColor = $(top[0]).value, topHex = $(top[1]).value;
+  $(top[0]).value = $(bottom[0]).value;
+  $(top[1]).value = $(bottom[1]).value;
+  $(bottom[0]).value = topColor;
+  $(bottom[1]).value = topHex;
+  if($('syncBg').checked){
+    if(which==='front'){
+      $('backTop').value = $('frontTop').value; $('backTopHex').value = $('frontTopHex').value;
+      $('backBg').value = $('frontBg').value; $('backBgHex').value = $('frontBgHex').value;
+    } else {
+      $('frontTop').value = $('backTop').value; $('frontTopHex').value = $('backTopHex').value;
+      $('frontBg').value = $('backBg').value; $('frontBgHex').value = $('backBgHex').value;
+    }
+  }
+  draw();
+}
+$('swapFrontGradientColors').onclick=()=>swapGradientColors('front');
+$('swapBackGradientColors').onclick=()=>swapGradientColors('back');
+
+function resetGradient(which){
+  const startId=which==='front'?'frontGradStart':'backGradStart';
+  const endId=which==='front'?'frontGradEnd':'backGradEnd';
+  $(startId).value=50; $(endId).value=82;
+  if($('syncBg').checked){$('frontGradStart').value=50;$('frontGradEnd').value=82;$('backGradStart').value=50;$('backGradEnd').value=82;}
+  draw();
+}
+$('resetFrontGradient').onclick=()=>resetGradient('front');
+$('resetBackGradient').onclick=()=>resetGradient('back');
+
+$('toggleGeneral').onclick=()=>{const content=$('generalContent'); const hidden=content.style.display==='none'; content.style.display=hidden?'block':'none'; $('toggleGeneral').textContent=hidden?'收起':'展开';};
+$('sizeBtn').onclick=showSizes; $('closeSize').onclick=()=>{$('sizeModal').style.display='none'}; $('sizeModal').addEventListener('click',e=>{if(e.target===$('sizeModal'))$('sizeModal').style.display='none'});
+
+$('exportCard').onclick=()=>saveCanvas(canvas,side==='front'?'polaroid-front.png':'polaroid-back.png'); $('exportGold').onclick=()=>saveCanvas(makeGoldCanvas(),side==='front'?'gold-layer-front.png':'gold-layer-back.png');
+if($('syncIP').checked)$('backTitle').value=$('frontIP').value; draw();
+</script><footer>感谢使用本网页工具，优化建议及bug反馈请联系bilibili @陈新粒<br><span style="font-size:12px">本工具中的“命途”图标版权属于《崩坏：星穹铁道》及其相关权利方；本工具为免费分享的非商业粉丝向网页工具，请勿用于商业用途或误导性用途。</span></footer></body></html>
